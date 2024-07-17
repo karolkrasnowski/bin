@@ -1,0 +1,47 @@
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
+import com.google.protobuf.Message.Builder;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class ProtobufSorter {
+
+    public static Message source(Message message) {
+        return sortRepeatedFields(message.toBuilder()).build();
+    }
+
+    private static Builder sortRepeatedFields(Builder builder) {
+        // Get the descriptor of the message
+        Descriptors.Descriptor descriptor = builder.getDescriptorForType();
+
+        // Iterate over all fields of the message
+        for (Descriptors.FieldDescriptor field : descriptor.getFields()) {
+            if (field.isRepeated()) {
+                // Get the repeated field values
+                List<?> values = (List<?>) builder.getField(field);
+
+                // Sort the repeated field values if they are comparable
+                if (!values.isEmpty() && values.get(0) instanceof Comparable) {
+                    List<Comparable> sortedValues = new ArrayList<>((List<Comparable>) values);
+                    Collections.sort(sortedValues);
+                    builder.setField(field, sortedValues);
+                }
+            } else if (field.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+                // If the field is a message type, sort its repeated fields recursively
+                if (builder.hasField(field)) {
+                    Message nestedMessage = (Message) builder.getField(field);
+                    builder.setField(field, sortRepeatedFields(nestedMessage.toBuilder()).build());
+                }
+            }
+        }
+        return builder;
+    }
+
+    public static void main(String[] args) {
+        // Example usage (assuming you have generated protobuf classes)
+        // MyProtobufMessage message = MyProtobufMessage.newBuilder().build();
+        // Message sortedMessage = ProtobufSorter.source(message);
+    }
+}
